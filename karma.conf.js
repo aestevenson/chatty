@@ -8,17 +8,23 @@ basePath = '';
 
 // list of files / patterns to load in the browser
 files = [
-  JASMINE,
-  JASMINE_ADAPTER,
-    ANGULAR_SCENARIO, ANGULAR_SCENARIO_ADAPTER,
+    //angular libs
+    'app/lib/*.js',
+    'app/lib/angular/*.js',
+    'app/lib/angular/plugins/*.js',
+    'test/lib/**/*.js',
 
-  //angular libs
-  'app/lib/*.js',
-  'app/lib/angular/*.js',
-  'app/lib/angular/plugins/*.js',
+    // files under test
+    'app/js/**/*.js',
 
-  'test/lib/**/*.js',
-  'test/unit/**/*Spec.js'
+    // plugins
+    ANGULAR_SCENARIO,
+    ANGULAR_SCENARIO_ADAPTER,
+    JASMINE,
+    JASMINE_ADAPTER,
+
+    //tests
+    'test/unit/**/*Spec.js'
 ];
 
 

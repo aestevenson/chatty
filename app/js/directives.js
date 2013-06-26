@@ -23,7 +23,7 @@ angular.module('chattyApp.directives', ['LocalStorageModule']).
         };
     })
 
-    .directive('chat', function (socket, localStorageService) {
+    .directive('chat', function (localStorageService) {
         var $chat = $("input.message-text"),
             $name = $("input.name");
         return function ($scope, element, attrs) {
@@ -36,7 +36,7 @@ angular.module('chattyApp.directives', ['LocalStorageModule']).
                         name = "Anonymous";
                     }
                     localStorageService.set(name, name);
-                    socket.emit('message', {
+                    $scope.emit({
                         name: name,
                         text: text,
                         timestamp: Math.round((new Date()).getTime() / 1000)
