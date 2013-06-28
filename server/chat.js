@@ -1,12 +1,12 @@
 var app = require('http').createServer(handler),
-    io = require('socket.io').listen(app),
+    io = require('socket.io').listen(app, {log:false}),
     fs = require('fs'),
     os = require('os'),
     port = process.env.PORT || 4444;
 
-io.configure(function () { 
-  io.set("transports", ["xhr-polling"]); 
-  io.set("polling duration", 10); 
+io.configure(function () {
+    io.set("transports", ["xhr-polling"]);
+    io.set("polling duration", 10);
 });
 
 app.listen(port);
@@ -14,9 +14,15 @@ app.listen(port);
 console.log("Grab your ip from here:");
 console.log(os.networkInterfaces());
 
-function handler (req, res) {
-    if(req.url.indexOf("/app/") > -1) {
-        fs.readFile(__dirname +'/..' + req.url, function (err, data) {
+function handler(req, res) {
+    if (req.url.indexOf("/app/") > -1) {
+        fs.readFile(__dirname + '/..' + req.url, function (err, data) {
+            if (req.url.indexOf("css") > -1) {
+                res.setHeader('Content-Type', 'text/css');
+            } else {
+                res.setHeader('Content-Type', 'text/javascript');
+            }
+
             res.writeHead(200);
             res.end(data);
         });
@@ -24,21 +30,22 @@ function handler (req, res) {
         fs.readFile(__dirname + '/../app/index.html',
             function (err, data) {
                 if (err) {
-                  res.writeHead(500);
-                  return res.end('Error loading index.html');
+                    res.writeHead(500);
+                    res.end('Error loading index.html');
+                } else {
+                    res.writeHead(200);
+                    res.end(data);
                 }
-                res.writeHead(200);
-                res.end(data);
-        });  
+            });
     }
 }
 
 var messageHistory = {
     messages: [],
     maxHistory: 50,
-    add: function(data) {
+    add: function (data) {
         this.messages.push(data);
-        if(this.messages.length > this.maxHistory) {
+        if (this.messages.length > this.maxHistory) {
             this.messages.shift();
         }
     },
@@ -50,54 +57,70 @@ var messageHistory = {
 // keep a running list of the current connections
 var socketManager = {
     sockets: [],
-    add: function(socket) {
-        this.sockets.push(socket);
-        this.emit('count', {'count': this.sockets.length});
+    lastCount : null,
+    connections: {},
+    rooms : {
+        'default' : []
     },
-    remove: function(socket) {
+    count : function() {
+//        var currentCount = Object.keys(socketManager.connections).length;
+//        if (this.lastCount === currentCount)
+//        {
+//            return;
+//        }
+//        console.log("Emitting Count:",this.lastCount);
+//        this.lastCount = currentCount;
+
+        this.emit('count', {'count': Object.keys(socketManager.connections).length});
+    },
+    add: function (socket) {
+        this.sockets.push(socket);
+        this.count();
+    },
+    remove: function (socket) {
         for (var i = 0; i < this.sockets.length; i++) {
             if (this.sockets[i].id === socket.id) {
                 this.sockets.splice(i, 1);
-                console.log(this.sockets);  
+                console.log(this.sockets);
             }
-        }            
-        this.emit('count', {'count': this.sockets.length});
+        }
+        this.count();
     },
-    emit: function(key, data) {
-        console.log("emitting: " +key);
+    emit: function (key, data) {
         for (var i = 0; i < this.sockets.length; i++) {
             this.sockets[i].emit(key, data);
         }
 
     },
-    emitCount: function() {
-        this.emit('count', {'count': this.sockets.length});
-    },
-    size: function() {
+    size: function () {
         return this.sockets.length;
     }
 };
 
 io.sockets.on('connection', function (socket) {
-    console.log("Connect received! Number of connections = " + this.sockets.length);
-    //sockets.push(socket);
+
+    socketManager.connections[socket.handshake.address.address] = "";
+    console.log("socketManager",socketManager.connections);
+
     socketManager.add(socket);
-    console.log(socket.id);
     // welcome message
-    socket.emit('message', { name: "Server",  text: 'Welcome!'});
+    socket.emit('message', { name: "Server", text: 'Welcome!'});
+
     if (messageHistory.size() > 0) {
         socket.emit('history', messageHistory.messages);
     }
 
+    //TODO: wtf is this?
     if (socketManager.size() > -10) {
-        socket.emit('count', {'count': this.sockets.length});
+        socketManager.count();
     }
 
     socket.on('message', function (data) {
         messageHistory.add(data);
         socketManager.emit("message", data);
     });
-    socket.on('disconnect', function (data) {
+    socket.on('disconnect', function (/*data*/) {
+        delete socketManager[socket.handshake.address.address];
         socketManager.remove(socket);
     });
 });
